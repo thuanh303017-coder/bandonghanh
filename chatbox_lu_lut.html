@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bạn đồng hành mùa lũ – Chat box an toàn</title>
+<style>
+:root{
+  --bg:#f3f8fc; --card:#ffffff; --ink:#12263a; --muted:#5b7088; --line:#d5e3ef;
+  --brand:#1b6ca8; --brand-ink:#ffffff; --user:#1b6ca8; --user-ink:#fff;
+  --warn-bg:#fff1f0; --warn-line:#f2b8b3; --warn-ink:#8a1c14; --ok:#e8f5ee;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1a26; --card:#162636; --ink:#e6eff7; --muted:#9db3c7; --line:#27405a;
+    --brand:#4ba3e3; --brand-ink:#08131d; --user:#2b7fc0; --user-ink:#fff;
+    --warn-bg:#3a1a19; --warn-line:#7a3a36; --warn-ink:#ffc9c4; --ok:#173226;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1a26; --card:#162636; --ink:#e6eff7; --muted:#9db3c7; --line:#27405a;
+  --brand:#4ba3e3; --brand-ink:#08131d; --user:#2b7fc0; --user-ink:#fff;
+  --warn-bg:#3a1a19; --warn-line:#7a3a36; --warn-ink:#ffc9c4; --ok:#173226;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro","Segoe UI",Roboto,Arial,sans-serif;font-size:16px;line-height:1.5}
+#app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto}
+header{padding:12px 14px 8px}
+h1{font-size:18px;margin:0 0 2px}
+.sub{font-size:13px;color:var(--muted);margin:0}
+.sos{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.sos a{flex:1 1 auto;min-width:90px;text-align:center;text-decoration:none;background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-ink);border-radius:10px;padding:6px 8px;font-size:13px;line-height:1.25}
+.sos a b{display:block;font-size:17px}
+#log{flex:1;overflow-y:auto;padding:8px 14px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:92%;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--card);word-wrap:break-word;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--user);color:var(--user-ink);border-color:transparent}
+.msg.bot{align-self:flex-start}
+.msg h3{font-size:15px;margin:0 0 6px}
+.msg ul,.msg ol{margin:6px 0;padding-left:20px}
+.msg li{margin:3px 0}
+.msg p{margin:6px 0}
+.msg a{color:var(--brand);word-break:break-all}
+.msg .src{font-size:12px;color:var(--muted);margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.msg.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.msg.warn a{color:inherit;font-weight:600}
+.msg .call a.tel{display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:8px;background:var(--brand);color:var(--brand-ink);text-decoration:none;font-weight:700}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:6px 14px;scrollbar-width:thin;flex-shrink:0}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;font-family:inherit}
+.chip:hover{border-color:var(--brand)}
+.inputbar{display:flex;gap:8px;padding:8px 14px 10px;flex-shrink:0}
+.inputbar input{flex:1;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit}
+.inputbar button{border:0;background:var(--brand);color:var(--brand-ink);border-radius:12px;padding:0 16px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.foot{font-size:11.5px;color:var(--muted);padding:0 14px 8px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🌊 Bạn đồng hành mùa lũ</h1>
+    <p class="sub">Hỏi nhanh về phòng, tránh và ứng phó lũ lụt. Nội dung cố định, lấy từ khuyến cáo chính thức.</p>
+    <div class="sos" aria-label="Số điện thoại khẩn cấp">
+      <a href="tel:112"><b>112</b>Cứu nạn, cứu hộ</a>
+      <a href="tel:114"><b>114</b>Cứu hỏa, cứu nạn</a>
+      <a href="tel:115"><b>115</b>Cấp cứu y tế</a>
+      <a href="tel:113"><b>113</b>Công an</a>
+    </div>
+  </header>
+
+  <div id="log" role="log" aria-live="polite"></div>
+  <div class="chips" id="chips"></div>
+
+  <div class="inputbar">
+    <input id="q" type="text" placeholder="Gõ câu hỏi, ví dụ: nước dâng thì làm gì?" autocomplete="off" enterkeyhint="send">
+    <button id="send" type="button">Gửi</button>
+  </div>
+  <div class="foot">Đây là công cụ học tập, không thay thế cảnh báo và hướng dẫn của chính quyền địa phương. Tình huống nguy hiểm: gọi 112 và nhờ người lớn.</div>
+</div>
+
+<script>
+(function(){
+  // ---------- Kho nội dung cố định ----------
+  var SRC_LOOKUP = "Kiểm tra lại các trang chính thức tại mục “Tra cứu thông tin quốc gia”.";
+
+  var TOPICS = [
+    {
+      id:"khancap", chip:"🚨 Số khẩn cấp",
+      keys:["so khan cap","khan cap","goi ai","sdt","so dien thoai","hotline","cuu ho","cuu nan","cap cuu","112","113","114","115","111","bi mac ket","mac ket","nguy hiem","cuu toi","cuu voi"],
+      html:'<h3>🚨 Số điện thoại khẩn cấp (Việt Nam)</h3>'+
+        '<div class="call">'+
+        '<p><a class="tel" href="tel:112">112</a> Tìm kiếm cứu nạn, cứu hộ (số khẩn cấp thống nhất)</p>'+
+        '<p><a class="tel" href="tel:114">114</a> Cứu hỏa và cứu nạn, cứu hộ</p>'+
+        '<p><a class="tel" href="tel:115">115</a> Cấp cứu y tế</p>'+
+        '<p><a class="tel" href="tel:113">113</a> Công an</p>'+
+        '<p><a class="tel" href="tel:111">111</a> Tổng đài quốc gia bảo vệ trẻ em</p>'+
+        '</div>'+
+        '<p><b>Khi gọi, hãy nói rõ:</b></p><ol><li>Em đang ở đâu (địa chỉ, gần mốc nào)</li><li>Chuyện gì đang xảy ra (nước dâng, mắc kẹt, có người bị thương…)</li><li>Có bao nhiêu người, ai cần giúp nhất (người già, trẻ nhỏ, người bệnh)</li><li>Số điện thoại em đang dùng; giữ máy, không tắt khi chưa được hướng dẫn</li></ol>'+
+        '<p>Ngoài ra, hãy lưu số của <b>trưởng thôn/tổ dân phố, UBND xã/phường và Ban chỉ huy phòng, chống thiên tai địa phương</b> (hỏi người lớn hoặc nhà trường).</p>'+
+        '<div class="src">Nguồn: các đầu số khẩn cấp quốc gia. Nếu em thấy đường dây bận, hãy gọi lại hoặc nhờ người xung quanh gọi giúp.</div>'
+    },
+    {
+      id:"tracuu", chip:"🔎 Tra cứu quốc gia",
+      keys:["tra cuu","website","trang web","link","du bao","canh bao","xem o dau","nguon","thoi tiet","ban tin","lu quet","sat lo","vndms","nchmf","ung dung"],
+      html:'<h3>🔎 Tra cứu thông tin quốc gia</h3>'+
+        '<ul>'+
+        '<li><b>Dự báo thời tiết, thủy văn, cảnh báo lũ trên sông</b> – Trung tâm Dự báo khí tượng thủy văn quốc gia:<br><a href="https://nchmf.gov.vn" target="_blank" rel="noopener">nchmf.gov.vn</a></li>'+
+        '<li><b>Cảnh báo lũ quét, sạt lở đất</b> (thời gian thực):<br><a href="http://luquetsatlo.nchmf.gov.vn/" target="_blank" rel="noopener">luquetsatlo.nchmf.gov.vn</a></li>'+
+        '<li><b>Hệ thống giám sát thiên tai Việt Nam</b> (đường đi của bão, cảnh báo thiên tai):<br><a href="https://vndms.dmc.gov.vn/" target="_blank" rel="noopener">vndms.dmc.gov.vn</a></li>'+
+        '<li><b>Radar mưa, cảnh báo sét:</b> <a href="https://iweather.gov.vn/" target="_blank" rel="noopener">iweather.gov.vn</a></li>'+
+        '</ul>'+
+        '<p><b>Lưu ý:</b> chỉ tin các trang của cơ quan nhà nước và kênh thông báo của chính quyền địa phương. Không chia sẻ tin chưa kiểm chứng.</p>'+
+        '<div class="src">Các địa chỉ trên đã được đối chiếu ngày 30/9/2026. Trang web có thể đổi tên miền hoặc giao diện; nếu không vào được, hãy tìm lại từ trang của Bộ Nông nghiệp và Môi trường.</div>'
+    },
+    {
+      id:"dauhieu", chip:"⚠️ Dấu hiệu sắp có lũ",
+      keys:["dau hieu","bao hieu","sap co lu","nhan biet","nhan dien","canh bao som"],
+      html:'<h3>⚠️ Dấu hiệu cảnh báo lũ</h3><ul>'+
+        '<li>Mưa lớn kéo dài, liên tục</li><li>Nước sông, suối dâng cao nhanh, chảy xiết, nước đổi màu đục</li><li>Đường phố, ngõ bắt đầu ngập, nước tràn vào sân, vào nhà</li><li>Sạt lở đất, đá rơi ở vùng đồi núi</li><li>Có thông báo, cảnh báo của cơ quan chức năng (loa phường/xã, tin nhắn, đài, TV)</li></ul>'+
+        '<p>Không phải dấu hiệu lũ: trời nắng nóng không mưa; nước rút dần, trời hửng nắng.</p>'+
+        '<div class="src">Nguồn: nội dung Phiếu học tập số 1 của bài học.</div>'
+    },
+    {
+      id:"kn", chip:"📘 Lũ, lụt, ngập úng",
+      keys:["khai niem","la gi","phan biet","lu la","lut la","ngap ung","dinh nghia","khac nhau"],
+      html:'<h3>📘 Phân biệt lũ – lụt – ngập úng</h3><ul>'+
+        '<li><b>Lũ:</b> nước sông, suối dâng cao, chảy mạnh, tăng nhanh, vượt mức bình thường trong thời gian ngắn.</li>'+
+        '<li><b>Lụt:</b> nước tràn khỏi lòng sông, ngập vùng đất thấp, khu dân cư, đường phố, đồng ruộng.</li>'+
+        '<li><b>Ngập úng:</b> nước đọng lại trên mặt đất do mưa lớn hoặc thoát nước kém, thường kéo dài ở một khu vực.</li></ul>'+
+        '<div class="src">Nguồn: Phiếu học tập số 1 (Phụ lục 1).</div>'
+    },
+    {
+      id:"nguyennhan", chip:"🌧️ Nguyên nhân",
+      keys:["nguyen nhan","vi sao","tai sao","do dau","bien doi khi hau","pha rung","rac"],
+      html:'<h3>🌧️ Vì sao xảy ra lũ, lụt?</h3>'+
+        '<p><b>Do tự nhiên:</b> mưa lớn kéo dài; bão, áp thấp nhiệt đới; triều cường, nước biển dâng.</p>'+
+        '<p><b>Do con người:</b> phá rừng, mất rừng đầu nguồn; xả rác, lấp kênh mương làm tắc cống; đô thị hóa, xây dựng lấn chiếm sông suối; vận hành, xả lũ hồ chứa không đúng quy trình.</p>'+
+        '<p><b>Biến đổi khí hậu</b> làm mưa lớn cực đoan và nước biển dâng xuất hiện nhiều hơn, nên nguy cơ lũ, ngập tăng.</p>'+
+        '<div class="src">Nguồn: nội dung bài học, Hoạt động 2.</div>'
+    },
+    {
+      id:"hauqua", chip:"🏚️ Hậu quả",
+      keys:["hau qua","anh huong","thiet hai","gay ra"],
+      html:'<h3>🏚️ Lũ lụt ảnh hưởng thế nào?</h3><ul>'+
+        '<li><b>Đời sống:</b> mất nhà, thiếu lương thực, gián đoạn sinh hoạt, đi lại, học tập</li>'+
+        '<li><b>Sản xuất:</b> hư hại mùa màng, gia súc, cơ sở sản xuất, kinh doanh</li>'+
+        '<li><b>Môi trường:</b> ô nhiễm nguồn nước, rác thải, xói lở đất</li>'+
+        '<li><b>Sức khỏe:</b> dễ mắc bệnh, ô nhiễm nước, thiếu nước sạch, nguy cơ dịch bệnh</li></ul>'+
+        '<div class="src">Nguồn: Phiếu học tập số 1, nhiệm vụ 4.</div>'
+    },
+    {
+      id:"truoc", chip:"🎒 Chuẩn bị trước lũ",
+      keys:["truoc lu","chuan bi","ba lo","tui cuu ho","vat dung","can mang gi","mang gi","tui cuu sinh","5kg"],
+      html:'<h3>🎒 Chuẩn bị trước mùa lũ</h3><ul>'+
+        '<li>Theo dõi dự báo, cảnh báo từ kênh chính thức; biết loa/đài/kênh thông báo của địa phương</li>'+
+        '<li>Cùng gia đình thống nhất: <b>nơi sơ tán an toàn, đường đi, điểm hẹn</b> và người liên lạc</li>'+
+        '<li>Ghi sẵn số khẩn cấp và số của địa phương vào giấy để trong túi</li>'+
+        '<li>Cất giấy tờ quan trọng, sổ khám bệnh trong túi nilon kín</li></ul>'+
+        '<p><b>Ba lô cứu hộ gọn nhẹ</b> (bài học đặt giới hạn tối đa 5 kg, xách chạy được bằng một tay) nên ưu tiên:</p>'+
+        '<ul><li>Nước uống, thức ăn khô</li><li>Đèn pin, pin dự phòng, sạc điện thoại</li><li>Thuốc cá nhân, bộ sơ cứu</li><li>Áo mưa, quần áo, khăn</li><li>Giấy tờ, số điện thoại quan trọng (bọc kín)</li></ul>'+
+        '<p>Em hãy tự hỏi: <i>“Nhà mình đã có túi cứu hộ chưa? Còn thiếu gì?”</i></p>'+
+        '<div class="src">Nguồn: Trạm 2 “Ba lô sinh tồn”. Danh mục chi tiết nên điều chỉnh theo gia đình và hướng dẫn của địa phương.</div>'
+    },
+    {
+      id:"trong", chip:"🌊 Khi lũ đang lên",
+      keys:["trong lu","dang ngap","nuoc dang","nuoc len","nuoc chay xiet","lu len","lu dang","xu ly","lam gi khi","dang co lu","lay tai san","quay lai lay","loi qua","di xe qua","ngam tran","tran"],
+      html:'<h3>🌊 Khi nước đang dâng</h3><ol>'+
+        '<li><b>Bình tĩnh</b>, báo ngay cho người lớn; nghe cảnh báo, hướng dẫn của chính quyền.</li>'+
+        '<li><b>Di chuyển lên nơi cao, an toàn</b> hoặc đến nơi sơ tán theo hướng dẫn. Nếu được yêu cầu sơ tán, đi sớm, đừng chờ nước lên cao.</li>'+
+        '<li><b>Không quay lại lấy tài sản.</b> Đồ vật có thể mua lại, tính mạng thì không.</li>'+
+        '<li><b>Không lội qua nước chảy xiết, không đi qua ngầm tràn, cầu tràn, đường ngập</b> (kể cả đi xe) vì không biết độ sâu và sức nước.</li>'+
+        '<li>Nếu còn kịp và <b>chưa có nước vào khu vực điện</b>: nhờ người lớn ngắt cầu dao. Không chạm vào thiết bị điện khi tay ướt hoặc đứng trong nước.</li>'+
+        '<li>Giữ điện thoại có pin, nhắn tin cho người thân biết vị trí. Nếu bị mắc kẹt: lên chỗ cao nhất an toàn và gọi <a href="tel:112">112</a>.</li></ol>'+
+        '<p>Không tự làm cứu hộ nguy hiểm. Việc của em là báo người lớn và gọi lực lượng chuyên môn.</p>'+
+        '<div class="src">Nguồn: Trạm 3 “Dòng nước thử thách” (đáp án an toàn: di chuyển đến nơi an toàn theo hướng dẫn) và khuyến cáo phòng, chống thiên tai.</div>'
+    },
+    {
+      id:"soantan", chip:"🚸 Sơ tán",
+      keys:["so tan","di doi","noi so tan","yeu cau so tan","lenh so tan","nguoi gia","tre nho","khuyet tat"],
+      html:'<h3>🚸 Khi có yêu cầu sơ tán</h3><ul>'+
+        '<li>Làm theo hướng dẫn của chính quyền, nhà trường; đi cùng gia đình, không tách đoàn.</li>'+
+        '<li>Mang ba lô cứu hộ, thuốc cần thiết, giấy tờ đã bọc kín.</li>'+
+        '<li>Ưu tiên người cần giúp đỡ: <b>người cao tuổi, trẻ nhỏ, người khuyết tật, người bệnh</b>. Em hãy nhắc và báo người lớn để hỗ trợ, không tự thực hiện việc cứu hộ nguy hiểm.</li>'+
+        '<li>Đi theo tuyến đường được chỉ dẫn, tránh sông suối, ngầm tràn, cột điện đổ, chân đồi dễ sạt lở.</li>'+
+        '<li>Khi đến nơi, báo danh với người phụ trách và cho người thân biết em đã an toàn.</li></ul>'+
+        '<div class="src">Nguồn: nội dung bài học và phần bảo đảm an toàn (mục D).</div>'
+    },
+    {
+      id:"sau", chip:"🧹 Sau khi nước rút",
+      keys:["sau lu","nuoc rut","ve nha","don dep","day dien","dien roi","bun dat","tro ve","nuoc ban","nuoc uong","ve sinh","benh","dich benh","thuc pham"],
+      html:'<h3>🧹 Sau khi nước rút</h3><ul>'+
+        '<li><b>Chờ thông báo an toàn</b> của chính quyền rồi mới trở về.</li>'+
+        '<li><b>Tránh xa dây điện rơi, đứt</b>, không chạm vào; báo cơ quan điện lực hoặc chính quyền. Không bật điện khi nhà còn ướt, chờ người có chuyên môn kiểm tra.</li>'+
+        '<li>Không vào nhà bị nứt, nghiêng hoặc hư hỏng nặng khi chưa được kiểm tra; cẩn thận sạt lở, nền trơn, đồ vật đổ.</li>'+
+        '<li><b>Không dùng nước lũ, nước giếng bị ngập để ăn uống</b> khi chưa xử lý. Dùng nước đun sôi hoặc nước đóng chai.</li>'+
+        '<li>Bỏ thực phẩm đã ngâm nước lũ. Rửa tay bằng xà phòng thường xuyên.</li>'+
+        '<li>Đi giày, ủng, găng tay khi dọn bùn; cẩn thận rắn, côn trùng, vật sắc nhọn. Việc nặng, việc nguy hiểm để người lớn làm.</li>'+
+        '<li>Có dấu hiệu bệnh (sốt, tiêu chảy, nôn, vết thương nhiễm trùng…): báo người lớn và đến cơ sở y tế; khẩn cấp gọi <a href="tel:115">115</a>.</li></ul>'+
+        '<div class="src">Nguồn: Trạm 4 “Trở về an toàn?”. Hướng dẫn xử lý nước, môi trường chi tiết: theo thông báo của cơ quan y tế địa phương.</div>'
+    },
+    {
+      id:"congtrinh", chip:"🛡️ Lá chắn chống lũ",
+      keys:["de dieu","ho chua","dap thuy loi","rung dau nguon","thoat nuoc","la chan","cong trinh","vai tro","xanh"],
+      html:'<h3>🛡️ Bốn “lá chắn” chống lũ</h3><ul>'+
+        '<li><b>Đê điều:</b> ngăn nước sông tràn vào khu dân cư, bảo vệ người và tài sản.</li>'+
+        '<li><b>Hồ chứa, đập thủy lợi:</b> trữ và điều tiết nước, giảm nguy cơ ngập hạ du.</li>'+
+        '<li><b>Rừng đầu nguồn:</b> giữ đất, giữ nước, giảm tốc độ dòng chảy mặt, giảm lũ quét, sạt lở.</li>'+
+        '<li><b>Hệ thống thoát nước:</b> thu gom, tiêu thoát nước mưa, hạn chế ngập úng đô thị.</li></ul>'+
+        '<p>Việc em có thể làm: không xả rác xuống cống, kênh mương; trồng, giữ gìn cây xanh; đề xuất với nhà trường kiểm tra cống rãnh trước mùa mưa.</p>'+
+        '<div class="src">Nguồn: Hoạt động 4 “Lá chắn xanh chống lũ”.</div>'
+    },
+    {
+      id:"camket", chip:"✍️ Phiếu cam kết",
+      keys:["cam ket","khong nen lam","tuyet doi","phieu","ve nha","bai tap","nhip cau"],
+      html:'<h3>✍️ Gợi ý hoàn thành Phiếu cam kết an toàn mùa lũ</h3>'+
+        '<p><b>1) Một dấu hiệu cảnh báo cần chú ý:</b> ví dụ mưa lớn kéo dài, nước sông dâng nhanh, có thông báo của cơ quan chức năng.</p>'+
+        '<p><b>2) Một việc cần làm khi nhận yêu cầu sơ tán:</b> ví dụ đi cùng gia đình theo hướng dẫn, mang ba lô cứu hộ.</p>'+
+        '<p><b>3) Một việc tuyệt đối không nên làm khi có lũ:</b> ví dụ lội qua nước chảy xiết, bơi hoặc chơi đùa ở nơi nước lũ, quay lại lấy đồ.</p>'+
+        '<p>Em hãy viết bằng lời của mình, sau đó cùng bố mẹ, người thân kiểm tra lại. Phụ huynh xác nhận sau 1 tuần thực hiện.</p>'+
+        '<div class="src">Nguồn: Phụ lục 5 của bài học.</div>'
+    },
+    {
+      id:"chao", chip:"👋 Bắt đầu",
+      keys:["xin chao","chao","hello","hi","alo","ban la ai","giup gi"],
+      html:'<h3>👋 Xin chào!</h3><p>Mình là bạn đồng hành mùa lũ. Em có thể hỏi về <b>số khẩn cấp</b>, <b>nơi tra cứu cảnh báo</b>, <b>dấu hiệu lũ</b>, <b>chuẩn bị – ứng phó – hành động sau lũ</b>. Bấm các nút gợi ý bên dưới hoặc gõ câu hỏi nhé.</p>'
+    }
+  ];
+
+  var URGENT = ["dang ngap","nuoc dang","nuoc len","mac ket","cuu toi","cuu voi","khan cap","dang bi lu","nuoc vao nha","nguy hiem"];
+
+  // ---------- Tiện ích ----------
+  function norm(s){
+    return (s||"").toLowerCase().replace(/đ/g,"d").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+  }
+  var log = document.getElementById("log");
+  var input = document.getElementById("q");
+
+  function add(cls, html){
+    var d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.innerHTML = html;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+  function esc(s){ return s.replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+  function findTopic(id){ for(var i=0;i<TOPICS.length;i++){ if(TOPICS[i].id===id) return TOPICS[i]; } return null; }
+
+  function match(text){
+    var n = " " + norm(text) + " ";
+    var best = null, bestScore = 0;
+    TOPICS.forEach(function(t){
+      var score = 0;
+      t.keys.forEach(function(k){
+        if(n.indexOf(" " + k + " ") !== -1 || (k.length>4 && n.indexOf(k) !== -1)){ score += k.split(" ").length + 1; }
+      });
+      if(score > bestScore){ bestScore = score; best = t; }
+    });
+    return bestScore > 0 ? best : null;
+  }
+
+  function isUrgent(text){
+    var n = norm(text);
+    return URGENT.some(function(k){ return n.indexOf(k) !== -1; });
+  }
+
+  function respond(text){
+    var urgent = isUrgent(text);
+    var t = match(text);
+    if(urgent){
+      add("bot warn","<b>Nếu em hoặc người thân đang gặp nguy hiểm ngay bây giờ:</b> hãy gọi <a href='tel:112'>112</a>, báo người lớn ở gần và di chuyển lên nơi cao, an toàn. Không lội qua nước chảy xiết.");
+    }
+    if(t){
+      add("bot", t.html);
+    } else if(!t && !urgent){
+      add("bot","<p>Mình chưa hiểu rõ câu hỏi này. Mình chỉ trả lời các nội dung đã kiểm chứng về lũ lụt. Em thử một trong các chủ đề bên dưới, hoặc hỏi người lớn/giáo viên nhé.</p><p>Nếu đang nguy hiểm, hãy gọi <a href='tel:112'>112</a>.</p>");
+    } else if(urgent && !t){
+      add("bot", findTopic("trong").html);
+    }
+  }
+
+  function send(text){
+    text = (text||"").trim();
+    if(!text) return;
+    add("user", esc(text));
+    input.value = "";
+    setTimeout(function(){ respond(text); }, 150);
+  }
+
+  // ---------- Khởi tạo ----------
+  var chips = document.getElementById("chips");
+  TOPICS.filter(function(t){ return t.id!=="chao"; }).forEach(function(t){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = t.chip;
+    b.addEventListener("click", function(){
+      add("user", esc(t.chip.replace(/^\S+\s/,"")));
+      setTimeout(function(){ add("bot", t.html); }, 150);
+    });
+    chips.appendChild(b);
+  });
+  document.getElementById("send").addEventListener("click", function(){ send(input.value); });
+  input.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); send(input.value); } });
+
+  add("bot", findTopic("chao").html);
+})();
+</script>
+</body>
+</html>
